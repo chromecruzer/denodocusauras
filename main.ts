@@ -56,7 +56,6 @@
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 import { Application, send, Router } from "https://deno.land/x/oak@v12.2.0/mod.ts";
 import { resolve } from "https://deno.land/std@0.183.0/path/mod.ts";
 
@@ -77,9 +76,8 @@ app.use(async (ctx, next) => {
 
   // If the response status is still 404 after static file serving
   if (ctx.response.status === 404) {
-     await send(ctx, filePath, {
+    await send(ctx, '/404.html', {
       root: `${Deno.cwd()}/build`,
-      index: '404.html',
     });
   }
 });
@@ -105,4 +103,3 @@ app.use(async (ctx) => {
 
 console.log(`Server running on http://localhost:${PORT}`);
 await app.listen({ port: PORT });
-
