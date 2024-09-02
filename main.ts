@@ -1,36 +1,38 @@
-// Importing Node.js modules
-import express, { Request, Response } from 'express';
-import compression from 'compression';
-import { join, cwd } from "https://deno.land/std@0.190.0/path/mod.ts";
+import express, { Request, Response } from "express";
+import compression from "compression";
+//import cors from "cors";
+//import morgan from "morgan";
+import 'colors';
 
-// Server configurations
+// Server configs
 const app = express();
 app.use(compression());
+//app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+//app.use(morgan('tiny'));
 
-// Front-end client
-const clientBuildPath = join(cwd(), 'build');
-console.log(clientBuildPath);
+// Front-end client (/** Docusaurus */)
+const clientBuildPath = `${Deno.cwd()}/build`;
+console.log(clientBuildPath.bgYellow);
 
-// Serve static files from the build directory
 app.use(express.static(clientBuildPath));
 
-// Handle SPA routing
+// Handle SPA routing, return index.html for all unknown routes
 app.get('*', (req: Request, res: Response, next: () => any) => {
   if (req.path.startsWith('/api')) {
     return next();
   }
-  res.sendFile(join(clientBuildPath, 'index.html'));
+  res.sendFile(`${clientBuildPath}/index.html`);
 });
 
-// API route
+// Routes
 app.get('/api', async (_req: Request, res: Response) => {
-  await res.status(200).json({ msg: 'This data comes from Backend Deno Server' });
+  await res.status(200).json({ msg: `This data comes from Backend Deno Server` });
 });
 
-// Port configuration
-const port = parseInt(Deno.env.get("PORT") || "3000", 10);
+// Start server
+const port = Deno.env.get("PORT") || 3000;
 app.listen(port, () => {
-  console.log(`Server is running at http://localhost:${port}`);
+  console.log(`Server is running at http://localhost:${port}`.bgGreen.bold);
 });
