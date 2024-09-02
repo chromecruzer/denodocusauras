@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[472],{5513:e=>{e.exports=JSON.parse('{"title":"Recent posts","items":[{"title":"company-policy","permalink":"/blog/company-policy","unlisted":false,"date":"2024-09-02T09:43:07.354Z"}]}')}}]);
