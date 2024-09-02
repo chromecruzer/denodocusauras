@@ -39,13 +39,13 @@
 
 import { serve } from "https://deno.land/std@0.198.0/http/server.ts";
 import { serveFile } from "https://deno.land/std@0.198.0/http/file_server.ts";
-import { join } from "https://deno.land/std@0.198.0/path/mod.ts";
+import { join, extname } from "https://deno.land/std@0.198.0/path/mod.ts";
 
 // Front-end client (/** Docusaurus */)
 const clientBuildPath = join(Deno.cwd(), "build");
-console.log(clientBuildPath);
+console.log(`Serving static files from: ${clientBuildPath}`);
 
-// Routes
+// Serve static files and handle SPA routing
 async function handler(req: Request): Promise<Response> {
   const url = new URL(req.url);
 
@@ -57,31 +57,27 @@ async function handler(req: Request): Promise<Response> {
     );
   }
 
-  // Serve static files from the build directory
-  try {
-    const filePath = url.pathname === "/" ? "index.html" : url.pathname;
-    const fullPath = join(clientBuildPath, filePath);
+  // Try to serve the requested file
+  const filePath = url.pathname === "/" ? "index.html" : url.pathname;
+  const fullPath = join(clientBuildPath, filePath);
 
-    // Attempt to serve the requested file
-    try {
-      return await serveFile(req, fullPath);
-    } catch (error) {
-      // If the file is not found, serve the 404.html file
-      if (error instanceof Deno.errors.NotFound) {
-        return await serveFile(req, join(clientBuildPath, "404.html"));
-      } else {
-        throw error;
-      }
-    }
+  try {
+    // Check if file exists
+    await Deno.stat(fullPath);
+
+    // Serve the file if it exists
+    return await serveFile(req, fullPath);
   } catch (error) {
-    console.error("Error serving file:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    if (error instanceof Deno.errors.NotFound) {
+      // Serve index.html if file is not found (SPA routing)
+      return await serveFile(req, join(clientBuildPath, "index.html"));
+    }
+    // Re-throw any other errors
+    throw error;
   }
 }
 
 // Start server
-const port = Deno.env.get("PORT") || 3000;
+const port = Number(Deno.env.get("PORT")) || 3000;
 console.log(`Server is running at http://localhost:${port}`);
-await serve(handler, { port: Number(port) });
-
-
+await serve(handler, { port });
