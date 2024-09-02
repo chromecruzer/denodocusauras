@@ -37,47 +37,63 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-import { serve } from "https://deno.land/std@0.198.0/http/server.ts";
+import express, { Request, Response, NextFunction } from "express";
+import compression from "compression";
 import { serveFile } from "https://deno.land/std@0.198.0/http/file_server.ts";
-import { join, extname } from "https://deno.land/std@0.198.0/path/mod.ts";
+import { join } from "https://deno.land/std@0.198.0/path/mod.ts";
+import 'colors';
+
+// Server configs
+const app = express();
+app.use(compression());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Front-end client (/** Docusaurus */)
 const clientBuildPath = join(Deno.cwd(), "build");
-console.log(`Serving static files from: ${clientBuildPath}`);
+console.log(clientBuildPath.bgYellow);
 
-// Serve static files and handle SPA routing
-async function handler(req: Request): Promise<Response> {
-  const url = new URL(req.url);
-
-  // Handle API routes
-  if (url.pathname.startsWith("/api")) {
-    return new Response(
-      JSON.stringify({ msg: "This data comes from Backend Deno Server" }),
-      { headers: { "Content-Type": "application/json" } },
-    );
+// Middleware to serve static files
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (req.path.startsWith('/api')) {
+    return next(); // Skip serving static files for API routes
   }
 
-  // Try to serve the requested file
-  const filePath = url.pathname === "/" ? "index.html" : url.pathname;
+  // Construct file path
+  const filePath = req.path === "/" ? "index.html" : req.path;
   const fullPath = join(clientBuildPath, filePath);
 
-  try {
-    // Check if file exists
-    await Deno.stat(fullPath);
+  // Serve the file if it exists
+  Deno.readFile(fullPath)
+    .then((fileContent) => {
+      res.setHeader('Content-Type', 'text/html');
+      res.send(new TextDecoder().decode(fileContent));
+    })
+    .catch((error) => {
+      if (error instanceof Deno.errors.NotFound) {
+        next(); // Continue to the next middleware if the file is not found
+      } else {
+        console.error("Error serving static file:", error);
+        res.status(500).send("Internal Server Error");
+      }
+    });
+});
 
-    // Serve the file if it exists
-    return await serveFile(req, fullPath);
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      // Serve index.html if file is not found (SPA routing)
-      return await serveFile(req, join(clientBuildPath, "index.html"));
-    }
-    // Re-throw any other errors
-    throw error;
+// Handle API routes
+app.get('/api', async (_req: Request, res: Response) => {
+  await res.status(200).json({ msg: "This data comes from Backend Deno Server" });
+});
+
+// Handle SPA routing, return index.html for all unknown routes
+app.get('*', (req: Request, res: Response) => {
+  if (req.path.startsWith('/api')) {
+    return;
   }
-}
+  res.sendFile(join(clientBuildPath, "index.html"));
+});
 
 // Start server
-const port = Number(Deno.env.get("PORT")) || 3000;
-console.log(`Server is running at http://localhost:${port}`);
-await serve(handler, { port });
+const port = Deno.env.get("PORT") || 3000;
+app.listen(port, () => {
+  console.log(`Server is running at http://localhost:${port}`.bgGreen.bold);
+});
